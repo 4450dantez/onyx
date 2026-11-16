@@ -7,11 +7,11 @@
 <br><br>
 
 <p align="center">
-  <a href="https://github.com/ignatiusmkuu-spec/Perez/archive/refs/heads/main.zip"><img src="https://img.shields.io/badge/DOWNLOAD%20ZIP-Panel%20Deployers-1f6feb?style=for-the-badge&logo=files&logoColor=white" alt="Download ZIP"></a>
+  <a href="https://github.com/ignatiusmkuu-spec/Tesla-bot/archive/refs/heads/main.zip"><img src="https://img.shields.io/badge/DOWNLOAD%20ZIP-Panel%20Deployers-1f6feb?style=for-the-badge&logo=files&logoColor=white" alt="Download ZIP"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ignatiusmkuu-spec/Perez/fork"><img src="https://img.shields.io/badge/FORK-Repository-2ea44f?style=for-the-badge&logo=github&logoColor=white" alt="Fork"></a>
+  <a href="https://github.com/ignatiusmkuu-spec/Tesla-bot/fork"><img src="https://img.shields.io/badge/FORK-Repository-2ea44f?style=for-the-badge&logo=github&logoColor=white" alt="Fork"></a>
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://heroku.com/deploy?template=https://github.com/ignatiusmkuu-spec/Perez"><img src="https://img.shields.io/badge/DEPLOY-Heroku-7056bf?style=for-the-badge&logo=heroku&logoColor=white" alt="Deploy to Heroku"></a>
+  <a href="https://heroku.com/deploy?template=https://github.com/ignatiusmkuu-spec/Tesla-bot"><img src="https://img.shields.io/badge/DEPLOY-Heroku-7056bf?style=for-the-badge&logo=heroku&logoColor=white" alt="Deploy to Heroku"></a>
 </p>
 
 </div>
