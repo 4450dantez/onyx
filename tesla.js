@@ -9,12 +9,9 @@ const speed = require("performance-now");
 const Genius = require("genius-lyrics"); 
 const yts = require("yt-search");
 const { DateTime } = require('luxon');
-const uploadtoimgur = require('./lib/imgur');
-const uploadToCatbox = require('./lib/catbox');
 const advice = require("badadvice");
 const {c, cpp, node, python, java} = require('compile-run');
 const acrcloud = require("acrcloud");
-const BASE_URL = 'https://noobs-api.top';
 const ytdl = require("ytdl-core");
 const { getSettings, updateSetting } = require('./database/config');
 const fetchSettings = require('./database/fetchSettings');
@@ -23,7 +20,6 @@ const identity = require('./lib/Identity');
 const antideleteLib = require('./lib/antidelete');
 const Client = new Genius.Client(process.env.GENIUS_API_KEY); // Scrapes if no key is provided
 const { fetchUrl, isUrl, processTime } = require("./lib/dreadfunc");
-const { TelegraPh, UploadFileUgu, webp2mp4File, floNime } = require('./lib/dreadupload');
 const { smsg, formatp, tanggal, formatDate, getTime,  sleep, generateProfilePicture, clockString, fetchJson, getBuffer, jsonformat, format, parseMention, getRandom } = require('./lib/dreadfunc');
 const { exec, spawn, execSync, execFile } = require("child_process");
 const handler = require('./lib/handler');
@@ -63,7 +59,6 @@ module.exports = async function tesla(client, m, chatUpdate, store) {
 var budy = typeof m.text == "string" ? m.text : "";
 var msgDreaded = m.message.extendedTextMessage?.contextInfo?.quotedMessage;
 	  
-// leave the prefix string empty if you don't want the bot to use a prefix
 const Heroku = require("heroku-client");  
 const appname = process.env.APP_NAME || '';
 const herokuapi = process.env.HEROKU_API;
@@ -372,7 +367,7 @@ if (antilinkall === 'on' && body.includes('https://') && !Owner && isBotAdmin &&
   
 
     if (cmd && !m.isGroup) {
-      console.log(chalk.black(chalk.bgWhite("[ RAVEN-AI ]")), color(argsLog, "turquoise"), chalk.magenta("From"), chalk.green(pushname), chalk.yellow(`[ ${m.sender.replace("@s.whatsapp.net", "")} ]`));
+      console.log(chalk.black(chalk.bgWhite("[ tesla-md ]")), color(argsLog, "turquoise"), chalk.magenta("From"), chalk.green(pushname), chalk.yellow(`[ ${m.sender.replace("@s.whatsapp.net", "")} ]`));
     } else if (cmd && m.isGroup) {
       console.log(
         chalk.black(chalk.bgWhite("[ LOGS ]")),
@@ -403,11 +398,13 @@ if (antilinkall === 'on' && body.includes('https://') && !Owner && isBotAdmin &&
             if (m.isBaileys) return;
             if (!budy.toLowerCase()) return;
             if (argsLog || (cmd && !m.isGroup)) {
-              // client.sendReadReceipt(m.chat, m.sender, [m.key.id])
-              console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Raven", "turquoise"));
+              
+              console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Tesla", "turquoise"));
+				
             } else if (argsLog || (cmd && m.isGroup)) {
-              // client.sendReadReceipt(m.chat, m.sender, [m.key.id])
-              console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Raven", "turquoise"));
+              
+              console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Tesla", "turquoise"));
+				
             }
           }
         }
