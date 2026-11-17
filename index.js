@@ -12,7 +12,6 @@ const pino = require("pino");
 const { Boom } = require("@hapi/boom");
 const fs = require("fs");
 const path = require("path");
-const axios = require("axios");
 const chalk = require("chalk");
 const logger = pino({ level: 'silent' });
 const FileType = require("file-type");
@@ -20,23 +19,19 @@ const figlet = require("figlet");
 let lastTextTime = 0;
 const messageDelay = 5000;
 const express = require("express");
-const currentTime = Date.now();
-const packname = process.env.STICKER_PACKNAME;
-const _ = require("lodash");
 const PhoneNumber = require("awesome-phonenumber");
 const { initializeDatabase } = require('./database/config');
 const fetchSettings = require('./database/fetchSettings');
 const groupCache = require('./lib/Groupcache');
 const Events = require('./lib/events');
-const { isUrl, smsg, generateMessageTag, getBuffer, getSizeMedia, fetchJson, await, sleep } = require('./lib/dreadfunc');
-const makeInMemoryStore = require('./store/store.js'); 
+const { smsg } = require('./lib/dreadfunc');
+const makeInMemoryStore = require('./store/store.js');
 const store = makeInMemoryStore({ logger: logger.child({ stream: 'store' }) });
 
 const app = express();
 const color = (text, color) => {
   return !color ? chalk.green(text) : chalk.keyword(color)(text);
 };
-
 
 function decodeSession(value) {
   let text = String(value || "").trim().replace(/^["']+|["']+$/g, "").trim();
@@ -118,7 +113,6 @@ async function startperez() {
     makeCacheableSignalKeyStore,
     downloadContentFromMessage,
     jidDecode,
-    proto,
   } = await import("@whiskeysockets/baileys");
 
   if (!databaseInitialized) {
@@ -126,21 +120,17 @@ async function startperez() {
     databaseInitialized = true;
   }
 
-  let autobio, welcome, mode, prefix, anticall;
+  const tesla = require("./tesla.js");
 
-try {
-  const settings = await fetchSettings();
-  console.log("😴 settings object:", settings);
+  let autobio;
+  try {
+    ({ autobio } = await fetchSettings());
+    console.log("✅ Settings loaded");
+  } catch (error) {
+    console.error("❌ Failed to load settings:", error.message || error);
+    return;
+  }
 
-  
-  ({ autobio, welcome, mode, prefix, anticall } = settings);
-
-  console.log("✅ Settings loaded successfully.... indexfile");
-} catch (error) {
-  console.error("❌ Failed to load settings:...indexfile", error.message || error);
-  return;
-}
-  
   const { state, saveCreds } = await useMultiFileAuthState('session');
   const { version, isLatest } = await fetchLatestBaileysVersion();
   console.log(`using WA v${version.join(".")}, isLatest: ${isLatest}`);
@@ -171,22 +161,17 @@ try {
 
 groupCache.bind(client);
 store.bind(client.ev);
-  
-if (autobio === 'on'){ 
-            setInterval(() => { 
 
-                                 const date = new Date() 
+  if (autobio === 'on') {
+    setInterval(() => {
+      const date = new Date();
+      const zone = { timeZone: 'Africa/Nairobi' };
+      client
+        .updateProfileStatus(`${date.toLocaleString('en-US', zone)} It's a ${date.toLocaleString('en-US', { weekday: 'long', ...zone })}.`)
+        .catch((error) => console.log('Autobio update failed:', error.message || error));
+    }, 60 * 1000);
+  }
 
-                         client.updateProfileStatus( 
-
-                                         ` ${date.toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })} It's a ${date.toLocaleString('en-US', { weekday: 'long', timeZone: 'Africa/Nairobi'})}.` 
-
-                                 ) 
-
-                         }, 10 * 1000) 
-
-}
-  
   client.ev.on("messages.upsert", async (chatUpdate) => {
     try {
 
@@ -206,14 +191,16 @@ if (autobio === 'on'){
             console.log('Status view failed:', error.message || error);
           }
         }
-        
-        if (live.autolike === 'on') {
+
+    if (live.autolike === 'on') {
           try {
             let poster = mek.key.participantAlt || mek.key.participantPn;
             if (!poster && mek.key.participant && mek.key.participant.endsWith('@lid')) {
               try {
                 poster = await client.signalRepository.lidMapping.getPNForLID(mek.key.participant);
-              } catch (error) { /* no phone number known for this LID */ }
+              } catch {
+                poster = null;
+              }
             }
             poster = poster || mek.key.participant;
             if (poster) {
@@ -231,24 +218,18 @@ if (autobio === 'on'){
             console.log('Status like failed:', error.message || error);
           }
         }
-        return; 
+        return;
       }
 
       if (!client.public && !mek.key.fromMe && chatUpdate.type === "notify") return;
-      
-      const m = smsg(client, mek, store);
-      
-const tesla = require("./tesla.js");
-tesla(client, m, chatUpdate, store);
 
-      } catch (err) {
-    
+      const m = smsg(client, mek, store);
+      tesla(client, m, chatUpdate, store).catch((error) => console.log(error));
+    } catch (err) {
       console.log(err);
     }
   });
-  
-//<================================================>//
-  // Handle error
+
   const unhandledRejections = new Map();
   process.on("unhandledRejection", (reason, promise) => {
     unhandledRejections.set(promise, reason);
@@ -257,11 +238,7 @@ tesla(client, m, chatUpdate, store);
   process.on("rejectionHandled", (promise) => {
     unhandledRejections.delete(promise);
   });
-  process.on("Something went wrong", function (err) {
-    console.log("Caught exception: ", err);
-  });
 
-  // Setting
   client.decodeJid = (jid) => {
     if (!jid) return jid;
     if (/:\d+@/gi.test(jid)) {
@@ -298,13 +275,11 @@ client.ev.on('call', async (callData) => {
       if (store && store.contacts) store.contacts[id] = { id, name: contact.notify };
     }
   });
-  
-client.ev.on("group-participants.update", async (m) => {
-    Events(client, m);
-  });
-  
+
+client.ev.on("group-participants.update", (update) => Events(client, update));
+
   client.getName = (jid, withoutContact = false) => {
-    id = client.decodeJid(jid);
+    const id = client.decodeJid(jid);
     withoutContact = client.withoutContact || withoutContact;
     let v;
     if (id.endsWith("@g.us"))
@@ -326,28 +301,8 @@ client.ev.on("group-participants.update", async (m) => {
     return (withoutContact ? "" : v.name) || v.subject || v.verifiedName || PhoneNumber("+" + jid.replace("@s.whatsapp.net", "")).getNumber("international");
   };
 
-  client.setStatus = (status) => {
-    client.query({
-      tag: "iq",
-      attrs: {
-        to: "@s.whatsapp.net",
-        type: "set",
-        xmlns: "status",
-      },
-      content: [
-        {
-          tag: "status",
-          attrs: {},
-          content: Buffer.from(status, "utf-8"),
-        },
-      ],
-    });
-    return status;
-  };
-
   client.public = true;
 
-  client.serializeM = (m) => smsg(client, m, store);
   client.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect, qr } = update;
     if (qr) {
@@ -368,14 +323,13 @@ client.ev.on("group-participants.update", async (m) => {
       } else {
         scheduleReconnect(reason ?? "unknown");
       }
-    } else if (connection === "open") {  
+    } else if (connection === "open") {
       botStatus = "connected";
       reconnectAttempts = 0;
-      
+
       console.log(color(`Congrats, ${botname} has successfully connected to this server`, "green"));
-      console.log(color("Lost in thoughts found in code", "red"));
       console.log(color("Text the bot number with menu to check my command list"));
-      
+
       (async () => {
         const self = client.decodeJid(client.user.id);
         for (let attempt = 1; attempt <= 2; attempt++) {
@@ -389,86 +343,39 @@ client.ev.on("group-participants.update", async (m) => {
         }
       })();
     }
-    
+
   });
 
   client.ev.on("creds.update", saveCreds);
 
-const getBuffer = async (url, options) => {
-    try {
-      options ? options : {};
-      const res = await axios({
-        method: "get",
-        url,
-        headers: {
-          DNT: 1,
-          "Upgrade-Insecure-Request": 1,
-        },
-        ...options,
-        responseType: "arraybuffer",
-      });
-      return res.data;
-    } catch (err) {
-      return err;
-    }
-  };
+ client.downloadMediaMessage = async (message) => {
+         let mime = (message.msg || message).mimetype || '';
+         let messageType = message.mtype ? message.mtype.replace(/Message/gi, '') : mime.split('/')[0];
+         const stream = await downloadContentFromMessage(message, messageType);
+         let buffer = Buffer.from([]);
+         for await(const chunk of stream) {
+             buffer = Buffer.concat([buffer, chunk])
+         }
 
- client.downloadMediaMessage = async (message) => { 
-         let mime = (message.msg || message).mimetype || ''; 
-         let messageType = message.mtype ? message.mtype.replace(/Message/gi, '') : mime.split('/')[0]; 
-         const stream = await downloadContentFromMessage(message, messageType); 
-         let buffer = Buffer.from([]); 
-         for await(const chunk of stream) { 
-             buffer = Buffer.concat([buffer, chunk]) 
-         } 
-  
-         return buffer 
-      }; 
-  
- client.downloadAndSaveMediaMessage = async (message, filename, attachExtension = true) => { 
-         let quoted = message.msg ? message.msg : message; 
-         let mime = (message.msg || message).mimetype || ''; 
-         let messageType = message.mtype ? message.mtype.replace(/Message/gi, '') : mime.split('/')[0]; 
-         const stream = await downloadContentFromMessage(quoted, messageType); 
-         let buffer = Buffer.from([]); 
-         for await(const chunk of stream) { 
-             buffer = Buffer.concat([buffer, chunk]); 
-         } 
-         let type = await FileType.fromBuffer(buffer); 
-         trueFileName = attachExtension ? (filename + '.' + type.ext) : filename; 
-         // save to file 
-         await fs.writeFileSync(trueFileName, buffer); 
-         return trueFileName; 
+         return buffer
+      };
+
+ client.downloadAndSaveMediaMessage = async (message, filename, attachExtension = true) => {
+         let quoted = message.msg ? message.msg : message;
+         let mime = (message.msg || message).mimetype || '';
+         let messageType = message.mtype ? message.mtype.replace(/Message/gi, '') : mime.split('/')[0];
+         const stream = await downloadContentFromMessage(quoted, messageType);
+         let buffer = Buffer.from([]);
+         for await(const chunk of stream) {
+             buffer = Buffer.concat([buffer, chunk]);
+         }
+         let type = await FileType.fromBuffer(buffer);
+         const trueFileName = attachExtension ? (filename + '.' + (type ? type.ext : 'bin')) : filename;
+         await fs.writeFileSync(trueFileName, buffer);
+         return trueFileName;
      };
 
   client.sendText = (jid, text, quoted = "", options) => client.sendMessage(jid, { text: text, ...options }, { quoted });
-
-  client.cMod = (jid, copy, text = "", sender = client.user.id, options = {}) => {
-    //let copy = message.toJSON()
-    let mtype = Object.keys(copy.message)[0];
-    let isEphemeral = mtype === "ephemeralMessage";
-    if (isEphemeral) {
-      mtype = Object.keys(copy.message.ephemeralMessage.message)[0];
-    }
-    let msg = isEphemeral ? copy.message.ephemeralMessage.message : copy.message;
-    let content = msg[mtype];
-    if (typeof content === "string") msg[mtype] = text || content;
-    else if (content.caption) content.caption = text || content.caption;
-    else if (content.text) content.text = text || content.text;
-    if (typeof content !== "string")
-      msg[mtype] = {
-        ...content,
-        ...options,
-      };
-    if (copy.key.participant) sender = copy.key.participant = sender || copy.key.participant;
-    else if (copy.key.participant) sender = copy.key.participant = sender || copy.key.participant;
-    if (copy.key.remoteJid.includes("@s.whatsapp.net")) sender = sender || copy.key.remoteJid;
-    else if (copy.key.remoteJid.includes("@broadcast")) sender = sender || copy.key.remoteJid;
-    copy.key.remoteJid = jid;
-    copy.key.fromMe = sender === client.user.id;
-
-    return proto.WebMessageInfo.create(copy);
-  };
 
   return client;
 }
