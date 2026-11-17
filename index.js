@@ -22,6 +22,7 @@ const express = require("express");
 const PhoneNumber = require("awesome-phonenumber");
 const { initializeDatabase } = require('./database/config');
 const fetchSettings = require('./database/fetchSettings');
+const { syncPlugins } = require('./lib/sync');
 const groupCache = require('./lib/Groupcache');
 const Events = require('./lib/events');
 const { smsg } = require('./lib/dreadfunc');
@@ -119,8 +120,9 @@ async function startperez() {
     await initializeDatabase();
     databaseInitialized = true;
   }
-
-  const tesla = require("./tesla.js");
+  
+await syncPlugins();
+const tesla = require("./tesla.js");
 
   let autobio;
   try {
