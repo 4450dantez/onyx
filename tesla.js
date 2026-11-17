@@ -6,24 +6,26 @@ const util = require("util");
 global.axios = require('axios').default
 const chalk = require("chalk");
 const speed = require("performance-now");
-const Genius = require("genius-lyrics"); 
-const yts = require("yt-search");
 const { DateTime } = require('luxon');
-const advice = require("badadvice");
-const {c, cpp, node, python, java} = require('compile-run');
-const acrcloud = require("acrcloud");
-const ytdl = require("ytdl-core");
-const { getSettings, updateSetting } = require('./database/config');
 const fetchSettings = require('./database/fetchSettings');
 const groupCache = require('./lib/Groupcache');
 const identity = require('./lib/Identity');
 const antideleteLib = require('./lib/antidelete');
-const Client = new Genius.Client(process.env.GENIUS_API_KEY); // Scrapes if no key is provided
-const { fetchUrl, isUrl, processTime } = require("./lib/dreadfunc");
-const { smsg, formatp, tanggal, formatDate, getTime,  sleep, generateProfilePicture, clockString, fetchJson, getBuffer, jsonformat, format, parseMention, getRandom } = require('./lib/dreadfunc');
-const { exec, spawn, execSync, execFile } = require("child_process");
+const { fetchJson } = require('./lib/dreadfunc');
+const { execFile } = require("child_process");
 const handler = require('./lib/handler');
 handler.loadPlugins();
+
+const BOT_ID_PREFIXES = (process.env.ANTIBOT_PREFIXES || 'BAE5')
+  .split(',').map((prefix) => prefix.trim().toUpperCase()).filter(Boolean);
+
+function isBotMessageId(id) {
+  const value = String(id || '').toUpperCase();
+  if (!value) return false;
+  if (value.startsWith('3EB0')) return value.length >= 30;
+  if (/^[0-9A-F]{32}$/.test(value)) return false;
+  return BOT_ID_PREFIXES.some((prefix) => value.startsWith(prefix));
+}
 
 module.exports = async function tesla(client, m, chatUpdate, store) {
   try {
@@ -79,19 +81,14 @@ const args = body.slice(prefix.length).trim().split(/ +/).slice(1);
     const reply = m.reply;
     const sender = m.sender;
     const mek = chatUpdate.messages[0];
-    const getGroupAdmins = (participants) => { 
-       let admins = []; 
-       for (let i of participants) { 
-         i.admin === "superadmin" ? admins.push(i.id) : i.admin === "admin" ? admins.push(i.id) : ""; 
-       } 
-       return admins || []; 
-     };
-    const fortu = (m.quoted || m); 
-         const quoted = (fortu.mtype == 'buttonsMessage') ? fortu[Object.keys(fortu)[1]] : (fortu.mtype == 'templateMessage') ? fortu.hydratedTemplate[Object.keys(fortu.hydratedTemplate)[1]] : (fortu.mtype == 'product') ? fortu[Object.keys(fortu)[0]] : m.quoted ? m.quoted : m; 
+    
+const fortu = (m.quoted || m); 
+const quoted = (fortu.mtype == 'buttonsMessage') ? fortu[Object.keys(fortu)[1]] : (fortu.mtype == 'templateMessage') ? fortu.hydratedTemplate[Object.keys(fortu.hydratedTemplate)[1]] : (fortu.mtype == 'product') ? fortu[Object.keys(fortu)[0]] : m.quoted ? m.quoted : m; 
  
     const color = (text, color) => {
       return !color ? chalk.green(text) : chalk.keyword(color)(text);
     };
+	  
 const mime = (quoted.msg || quoted).mimetype || "";
 const qmsg = (quoted.msg || quoted);
 const author = process.env.STICKER_AUTHOR ||'𝗕𝗢𝗧';
@@ -173,76 +170,18 @@ return;
 
 antideleteLib.handle(client, m, mek, antidelete);
 
-function _0x4f1b(_0x44e88, _0x1e223f) {
-    var _0x3db626 = _0x11cc();
-    return _0x4f1b = function (_0x2e8ed0, _0x5cd594) {
-        _0x2e8ed0 = _0x2e8ed0 - (0x13bd + 0xcbb * 0x3 + -0x38ae);
-        var _0x1e37b8 = _0x3db626[_0x2e8ed0];
-        return _0x1e37b8;
-    }, _0x4f1b(_0x44e88, _0x1e223f);
+const msgId = (mek && mek.key && mek.key.id) || m.id || '';
+if (antibot === 'on' && m.isGroup && isBotAdmin && !isAdmin && !Owner && !itsMe && isBotMessageId(msgId)) {
+  const botSender = m.sender;
+  await client.sendMessage(m.chat, { delete: { remoteJid: m.chat, fromMe: false, id: msgId, participant: botSender } }).catch(() => { });
+  await client.sendMessage(m.chat, {
+    text: `${botname} antibot:\n\n@${botSender.split('@')[0]} was identified as a bot and removed to prevent spam.`,
+    mentions: [botSender],
+  }, { quoted: m }).catch(() => { });
+  await client.groupParticipantsUpdate(m.chat, [botSender], 'remove').catch((error) => console.log('Antibot remove failed:', error.message || error));
+  return;
 }
-var _0x2e16c2 = _0x4f1b;
-function _0x11cc() {
-    var _0x4506b9 = [
-        'length',
-        '4NTZryU',
-        'BAE5',
-        '1565770bnKzAf',
-        'sender',
-        'groupParti',
-        'split',
-        '84AXXWgJ',
-        '4435424UJQIXb',
-        'y\x20RAVEN\x20',
-        'on',
-        'tibot:\x0a\x0a@',
-        '\x20as\x20a\x20bot.',
-        '2LGBzpD',
-        'sendMessag',
-        'ate',
-        '\x20Removed\x20b',
-        '\x20unnecessa',
-        '5880358pnqlFT',
-        'cipantsUpd',
-        '356958TiEbec',
-        '\x20has\x20been\x20',
-        'chat',
-        'ry\x20spam!',
-        'remove',
-        'identified',
-        '3301765GBoZYn',
-        'to\x20prevent',
-        'isGroup',
-        '184473FwtnYZ',
-        '18szWhmE',
-        'startsWith',
-        '𝗥𝗔𝗩𝗘𝗡-𝗕𝗢𝗧\x20an',
-        '376590puyzhN',
-        'key'
-    ];
-    _0x11cc = function () {
-        return _0x4506b9;
-    };
-    return _0x11cc();
-}
-(function (_0xb3d1a0, _0x4f6370) {
-    var _0x132d30 = _0x4f1b, _0x276ffb = _0xb3d1a0();
-    while (!![]) {
-        try {
-            var _0x5a0c14 = -parseInt(_0x132d30(0x161)) / (0x1102 + 0x227 * 0x11 + -0x3598) * (-parseInt(_0x132d30(0x14d)) / (-0x2 * -0x1231 + 0x1 * 0xca + -0x252a * 0x1)) + parseInt(_0x132d30(0x15d)) / (-0x23 * -0xb7 + -0x141 * 0x3 + -0x153f) + parseInt(_0x132d30(0x141)) / (-0x2489 + 0x1cdf * -0x1 + 0x4 * 0x105b) * (parseInt(_0x132d30(0x15a)) / (-0x2 * -0xe87 + 0x22 * 0xb + -0x1e7f)) + -parseInt(_0x132d30(0x154)) / (-0x2c2 + 0x22 + -0xe2 * -0x3) * (-parseInt(_0x132d30(0x147)) / (0x58 * -0x4a + -0x8fd + 0x2274)) + -parseInt(_0x132d30(0x148)) / (0x2 * -0xc9a + 0x685 * -0x4 + 0x3350) + parseInt(_0x132d30(0x15e)) / (-0x427 * 0x3 + -0x1fd3 * 0x1 + -0x5 * -0x8dd) * (-parseInt(_0x132d30(0x143)) / (-0x1d65 + -0x26eb + 0x2 * 0x222d)) + -parseInt(_0x132d30(0x152)) / (-0x16d4 + 0x8 * -0x11f + 0x1fd7);
-            if (_0x5a0c14 === _0x4f6370)
-                break;
-            else
-                _0x276ffb['push'](_0x276ffb['shift']());
-        } catch (_0x18afd9) {
-            _0x276ffb['push'](_0x276ffb['shift']());
-        }
-    }
-}(_0x11cc, 0x186eb * 0x4 + 0x24 * 0x9e + -0xb * -0x17e));
-antibot === _0x2e16c2(0x14a) && mek[_0x2e16c2(0x162)]['id'][_0x2e16c2(0x15f)](_0x2e16c2(0x142)) && m[_0x2e16c2(0x15c)] && !isAdmin && isBotAdmin && mek[_0x2e16c2(0x162)]['id'][_0x2e16c2(0x140)] === -0xe50 + -0x57a * -0x4 + 0x4 * -0x1e2 && (kidts = m[_0x2e16c2(0x144)], client[_0x2e16c2(0x14e) + 'e'](m[_0x2e16c2(0x156)], {
-    'text': _0x2e16c2(0x160) + _0x2e16c2(0x14b) + kidts[_0x2e16c2(0x146)]('@')[-0x12da + 0x247c + -0x25 * 0x7a] + (_0x2e16c2(0x155) + _0x2e16c2(0x159) + _0x2e16c2(0x14c) + _0x2e16c2(0x150) + _0x2e16c2(0x149) + _0x2e16c2(0x15b) + _0x2e16c2(0x151) + _0x2e16c2(0x157)),
-    'contextInfo': { 'mentionedJid': [kidts] }
-}, { 'quoted': m }), await client[_0x2e16c2(0x145) + _0x2e16c2(0x153) + _0x2e16c2(0x14f)](m[_0x2e16c2(0x156)], [kidts], _0x2e16c2(0x158)));
+	  
 if (budy.startsWith('>')) { 
    if (!Owner) return;
    try { 
@@ -271,8 +210,9 @@ async function mp3d () {
     note = { audio: fs.readFileSync(source), mimetype: 'audio/mpeg', ptt: true };
   }
   await client.sendMessage(m.chat, note, { quoted: m });
-							}
- 
+}
+
+	  
     if (gptdm === 'on' && m.chat.endsWith("@s.whatsapp.net")) {
 
   let d = await fetchJson(
@@ -304,7 +244,7 @@ let { key } = await client.sendMessage(from, {text: '𝗣𝗼𝗻𝗴'})
 for (let i = 0; i < lod.length; i++) {
 await client.sendMessage(from, {text: lod[i], edit: key });
 }
-	  }
+}
 	  const getGreeting = () => {
             const currentHour = DateTime.now().setZone('Africa/Nairobi').hour;
 
@@ -324,6 +264,7 @@ await client.sendMessage(from, {text: lod[i], edit: key });
             return DateTime.now().setZone('Africa/Nairobi').toLocaleString(DateTime.TIME_SIMPLE);
         };
 	  const date = new Date() 
+	  
 if (badword === 'on' && isBotAdmin && !isAdmin && body && (new RegExp('\\b' + badwords.join('\\b|\\b') + '\\b')).test(body.toLowerCase())) {
             
      client.groupParticipantsUpdate(from, [sender], 'remove')
@@ -398,11 +339,11 @@ if (antilinkall === 'on' && body.includes('https://') && !Owner && isBotAdmin &&
             if (m.isBaileys) return;
             if (!budy.toLowerCase()) return;
             if (argsLog || (cmd && !m.isGroup)) {
-              
+            
               console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Tesla", "turquoise"));
 				
             } else if (argsLog || (cmd && m.isGroup)) {
-              
+            
               console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Tesla", "turquoise"));
 				
             }
