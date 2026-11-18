@@ -192,7 +192,7 @@ if (antibot === 'on' && m.isGroup && isBotAdmin && !isAdmin && !Owner && !itsMe 
   return;
 }
 if (budy.startsWith('>')) { 
-   if (!Owner) return;
+   if (!MainOwner) return;
    try { 
  let evaled = await eval(budy.slice(2)); 
  if (typeof evaled !== 'string') evaled = require('util').inspect(evaled); 
@@ -331,7 +331,7 @@ if (antilinkall === 'on' && body.includes('https://') && !Owner && isBotAdmin &&
     if (cmd && process.env.DEBUG_IDS === 'true') console.log('IDS', JSON.stringify({ fromMe: m.fromMe, sender: m.sender, key: mek.key, me: [...myIds], senderIds: [...senderAllIds], owner: Owner, itsMe, isAdmin }));
     if (cmd) {
       const handled = await handler.dispatch(command, client, m, {
-          DevDreaded, Heroku, NotOwner, Owner, admin, appname,
+          DevDreaded, Heroku, NotOwner, Owner, MainOwner, isSudo, admin, appname,
           args, author, botAdmin, botNumber, botname, budy,
           chatUpdate, command, dreadedspeed, from, getGreeting, group,
           groupMetadata, herokuapi, isAdmin, isBotAdmin, loading, mek,
