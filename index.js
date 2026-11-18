@@ -8,6 +8,7 @@ let databaseInitialized = false;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
 
+const crypto = require("crypto");
 const pino = require("pino");
 const { Boom } = require("@hapi/boom");
 const fs = require("fs");
@@ -22,9 +23,10 @@ const express = require("express");
 const PhoneNumber = require("awesome-phonenumber");
 const { initializeDatabase } = require('./database/config');
 const fetchSettings = require('./database/fetchSettings');
-const { syncPlugins } = require('./lib/sync');
 const groupCache = require('./lib/Groupcache');
 const Events = require('./lib/events');
+const { syncPlugins } = require('./lib/pluginSync');
+const Guard = require('./lib/guard');
 const { smsg } = require('./lib/dreadfunc');
 const makeInMemoryStore = require('./store/store.js');
 const store = makeInMemoryStore({ logger: logger.child({ stream: 'store' }) });
@@ -84,8 +86,15 @@ async function authenticationn() {
   }
 
   const creds = decodeSession(session);
-  fs.mkdirSync(path.dirname(credsPath), { recursive: true });
-  fs.writeFileSync(credsPath, creds, { encoding: "utf8", mode: 0o600 });
+  const marker = path.join(path.dirname(credsPath), ".session-hash");
+  const hash = crypto.createHash("sha256").update(session).digest("hex");
+  const sameSession = fs.existsSync(credsPath) && fs.existsSync(marker) && fs.readFileSync(marker, "utf8").trim() === hash;
+
+  if (!sameSession) {
+    fs.mkdirSync(path.dirname(credsPath), { recursive: true });
+    fs.writeFileSync(credsPath, creds, { encoding: "utf8", mode: 0o600 });
+    fs.writeFileSync(marker, hash, { encoding: "utf8", mode: 0o600 });
+  }
   sessionInitialized = true;
 }
 
@@ -120,9 +129,10 @@ async function startperez() {
     await initializeDatabase();
     databaseInitialized = true;
   }
-  
-await syncPlugins();
-const tesla = require("./tesla.js");
+
+  await syncPlugins();
+
+  const tesla = require("./tesla.js");
 
   let autobio;
   try {
@@ -158,6 +168,10 @@ const tesla = require("./tesla.js");
       keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" })),
     },
     cachedGroupMetadata: async (jid) => groupCache.get(jid),
+    getMessage: async (key) => {
+      const stored = store.loadMessage(key.remoteJid, key.id);
+      return stored && stored.message ? stored.message : undefined;
+    },
     syncFullHistory: false,
   });
 
@@ -174,61 +188,68 @@ store.bind(client.ev);
     }, 60 * 1000);
   }
 
-  client.ev.on("messages.upsert", async (chatUpdate) => {
-    try {
-
-      if (!chatUpdate.messages?.length) return;
-      const mek = chatUpdate.messages[0];
-      if (!mek.message) return;
-      mek.message = Object.keys(mek.message)[0] === "ephemeralMessage" ? mek.message.ephemeralMessage.message : mek.message;
-
-      if (mek.key && mek.key.remoteJid === "status@broadcast") {
-
-        if (chatUpdate.type !== "notify" || mek.key.fromMe) return;
-        const live = await fetchSettings();
-        if (live.autoview === 'on') {
-          try {
-            await client.readMessages([mek.key]);
-          } catch (error) {
-            console.log('Status view failed:', error.message || error);
-          }
-        }
+  const handleStatus = async (mek, chatUpdate) => {
+    if (chatUpdate.type !== "notify" || mek.key.fromMe) return;
+    const live = await fetchSettings();
+    if (live.autoview === 'on') {
+      try {
+        await client.readMessages([mek.key]);
+      } catch (error) {
+        console.log('Status view failed:', error.message || error);
+      }
+    }
 
     if (live.autolike === 'on') {
+      try {
+        let poster = mek.key.participantAlt || mek.key.participantPn;
+        if (!poster && mek.key.participant && mek.key.participant.endsWith('@lid')) {
           try {
-            let poster = mek.key.participantAlt || mek.key.participantPn;
-            if (!poster && mek.key.participant && mek.key.participant.endsWith('@lid')) {
-              try {
-                poster = await client.signalRepository.lidMapping.getPNForLID(mek.key.participant);
-              } catch {
-                poster = null;
-              }
-            }
-            poster = poster || mek.key.participant;
-            if (poster) {
-              const botJid = client.decodeJid(client.user.id);
-              const likeKey = {
-                remoteJid: mek.key.remoteJid,
-                id: mek.key.id,
-                fromMe: mek.key.fromMe,
-                participant: poster,
-              };
-              await client.sendMessage(mek.key.remoteJid, { react: { key: likeKey, text: '🧚' } }, { statusJidList: [poster, botJid] });
-              console.log('Status like sent to:', poster, '(as', mek.key.participant + ')');
-            }
-          } catch (error) {
-            console.log('Status like failed:', error.message || error);
+            poster = await client.signalRepository.lidMapping.getPNForLID(mek.key.participant);
+          } catch {
+            poster = null;
           }
         }
-        return;
+        poster = poster || mek.key.participant;
+        if (poster) {
+          const botJid = client.decodeJid(client.user.id);
+          const likeKey = {
+            remoteJid: mek.key.remoteJid,
+            id: mek.key.id,
+            fromMe: mek.key.fromMe,
+            participant: poster,
+          };
+          await client.sendMessage(mek.key.remoteJid, { react: { key: likeKey, text: '🧚' } }, { statusJidList: [poster, botJid] });
+          console.log('Status like sent to:', poster, '(as', mek.key.participant + ')');
+        }
+      } catch (error) {
+        console.log('Status like failed:', error.message || error);
       }
+    }
+  };
 
-      if (!client.public && !mek.key.fromMe && chatUpdate.type === "notify") return;
+  client.ev.on("messages.upsert", async (chatUpdate) => {
+    for (const mek of chatUpdate.messages || []) {
+      try {
+        if (!mek.message) {
+          if (mek.messageStubType === 2) {
+            console.log(`[DECRYPT] Could not read a message from ${mek.key && mek.key.remoteJid}: ${(mek.messageStubParameters || []).join(" ")}`);
+          }
+          continue;
+        }
+        mek.message = Object.keys(mek.message)[0] === "ephemeralMessage" ? mek.message.ephemeralMessage.message : mek.message;
 
-      const m = smsg(client, mek, store);
-      tesla(client, m, chatUpdate, store).catch((error) => console.log(error));
-    } catch (err) {
-      console.log(err);
+        if (mek.key && mek.key.remoteJid === "status@broadcast") {
+          handleStatus(mek, chatUpdate).catch((error) => console.log("Status handling failed:", error.message || error));
+          continue;
+        }
+
+        if (!client.public && !mek.key.fromMe && chatUpdate.type === "notify") continue;
+
+        const m = smsg(client, mek, store);
+        tesla(client, m, { ...chatUpdate, messages: [mek] }, store).catch((error) => console.log(error));
+      } catch (err) {
+        console.log(err);
+      }
     }
   });
 
@@ -277,8 +298,10 @@ client.ev.on('call', async (callData) => {
       if (store && store.contacts) store.contacts[id] = { id, name: contact.notify };
     }
   });
-
-client.ev.on("group-participants.update", (update) => Events(client, update));
+client.ev.on("group-participants.update", (update) => {
+  Events(client, update);
+  Guard(client, update);
+});
 
   client.getName = (jid, withoutContact = false) => {
     const id = client.decodeJid(jid);
