@@ -16,7 +16,10 @@ const defaultSettings = {
   prefix: '.',
   autolike: 'on',
   autoview: 'on',
-  wapresence: 'online'
+  wapresence: 'online',
+  sudo: '',
+  antidemote: 'off',
+  antipromote: 'off'
 };
 
 const jsonStore = require('./jsonStore');
