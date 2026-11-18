@@ -25,7 +25,7 @@ const { initializeDatabase } = require('./database/config');
 const fetchSettings = require('./database/fetchSettings');
 const groupCache = require('./lib/Groupcache');
 const Events = require('./lib/events');
-const { syncPlugins } = require('./lib/pluginSync');
+const { syncPlugins } = require('./lib/sync');
 const Guard = require('./lib/guard');
 const { smsg } = require('./lib/dreadfunc');
 const makeInMemoryStore = require('./store/store.js');
@@ -131,7 +131,6 @@ async function startperez() {
   }
 
   await syncPlugins();
-
   const tesla = require("./tesla.js");
 
   let autobio;
