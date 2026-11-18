@@ -19,7 +19,10 @@ async function fetchSettings() {
     autobio: data.autobio,
     badword: data.badword,
     gptdm: data.gptdm, 
-    anticall: data.anticall
+    anticall: data.anticall,
+    sudo: data.sudo,
+    antidemote: data.antidemote,
+    antipromote: data.antipromote
   };
 }
 
