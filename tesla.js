@@ -10,6 +10,7 @@ const { DateTime } = require('luxon');
 const fetchSettings = require('./database/fetchSettings');
 const groupCache = require('./lib/Groupcache');
 const identity = require('./lib/Identity');
+const sudoLib = require('./lib/sudo');
 const antideleteLib = require('./lib/antidelete');
 const { fetchJson } = require('./lib/dreadfunc');
 const { execFile } = require("child_process");
@@ -61,6 +62,7 @@ module.exports = async function tesla(client, m, chatUpdate, store) {
 var budy = typeof m.text == "string" ? m.text : "";
 var msgDreaded = m.message.extendedTextMessage?.contextInfo?.quotedMessage;
 	  
+// leave the prefix string empty if you don't want the bot to use a prefix
 const Heroku = require("heroku-client");  
 const appname = process.env.APP_NAME || '';
 const herokuapi = process.env.HEROKU_API;
@@ -73,7 +75,8 @@ const args = body.slice(prefix.length).trim().split(/ +/).slice(1);
     const botNumber = await client.decodeJid(client.user.id);
     const myIds = await identity.expand(client, identity.botIds(client));
     const itsMe0 = m.fromMe || myIds.has(identity.bare(m.sender));
-    let text = (q = args.join(" "));
+    const q = args.join(" ");
+    let text = q;
     const arg = budy.trim().substring(budy.indexOf(" ") + 1);
     const arg1 = arg.trim().substring(arg.indexOf(" ") + 1);
     m.isBaileys = m.id.startsWith("BAE5") && m.id.length === 16;
@@ -81,14 +84,19 @@ const args = body.slice(prefix.length).trim().split(/ +/).slice(1);
     const reply = m.reply;
     const sender = m.sender;
     const mek = chatUpdate.messages[0];
-    
-const fortu = (m.quoted || m); 
-const quoted = (fortu.mtype == 'buttonsMessage') ? fortu[Object.keys(fortu)[1]] : (fortu.mtype == 'templateMessage') ? fortu.hydratedTemplate[Object.keys(fortu.hydratedTemplate)[1]] : (fortu.mtype == 'product') ? fortu[Object.keys(fortu)[0]] : m.quoted ? m.quoted : m; 
+    const getGroupAdmins = (participants) => { 
+       let admins = []; 
+       for (let i of participants) { 
+         i.admin === "superadmin" ? admins.push(i.id) : i.admin === "admin" ? admins.push(i.id) : ""; 
+       } 
+       return admins || []; 
+     };
+    const fortu = (m.quoted || m); 
+         const quoted = (fortu.mtype == 'buttonsMessage') ? fortu[Object.keys(fortu)[1]] : (fortu.mtype == 'templateMessage') ? fortu.hydratedTemplate[Object.keys(fortu.hydratedTemplate)[1]] : (fortu.mtype == 'product') ? fortu[Object.keys(fortu)[0]] : m.quoted ? m.quoted : m; 
  
     const color = (text, color) => {
       return !color ? chalk.green(text) : chalk.keyword(color)(text);
     };
-	  
 const mime = (quoted.msg || quoted).mimetype || "";
 const qmsg = (quoted.msg || quoted);
 const author = process.env.STICKER_AUTHOR ||'𝗕𝗢𝗧';
@@ -123,7 +131,9 @@ const badwords = bad.split(",")
      const botJid = identity.bare(client.user.id);
      const botLid = identity.bare(client.user.lid || '');
      const botOwnerIds = [botJid, botLid, ...myIds].filter(Boolean);
-     const Owner = itsMe || identity.isOwner(senderAllIds, DevDreaded, [...ownerAlt, ...botOwnerIds]);
+     const MainOwner = itsMe || identity.isOwner(senderAllIds, DevDreaded, [...ownerAlt, ...botOwnerIds]);
+     const isSudo = !MainOwner && await sudoLib.isSudo(client, senderAllIds);
+     const Owner = MainOwner || isSudo;
      const admin = process.env.ADMIN_MSG || '𝗖𝗼𝗺𝗺𝗮𝗻𝗱 𝗿𝗲𝘀𝗲𝗿𝘃𝗲𝗱 𝗳𝗼𝗿 𝗔𝗱𝗺𝗶𝗻𝘀!';
      const group = process.env.GROUP_ONLY_MSG || '𝗖𝗼𝗺𝗺𝗮𝗻𝗱 𝗺𝗲𝗮𝗻𝘁 𝗳𝗼𝗿 𝗚𝗿𝗼𝘂𝗽𝘀!';
      const botAdmin = process.env.BOT_ADMIN_MSG || '𝗜 𝗻𝗲𝗲𝗱 𝗔𝗱𝗺𝗶𝗻 𝗽𝗿𝗲𝘃𝗶𝗹𝗲𝗱𝗴𝗲𝘀!'
@@ -181,7 +191,6 @@ if (antibot === 'on' && m.isGroup && isBotAdmin && !isAdmin && !Owner && !itsMe 
   await client.groupParticipantsUpdate(m.chat, [botSender], 'remove').catch((error) => console.log('Antibot remove failed:', error.message || error));
   return;
 }
-	  
 if (budy.startsWith('>')) { 
    if (!Owner) return;
    try { 
@@ -210,9 +219,8 @@ async function mp3d () {
     note = { audio: fs.readFileSync(source), mimetype: 'audio/mpeg', ptt: true };
   }
   await client.sendMessage(m.chat, note, { quoted: m });
-}
-
-	  
+							}
+ 
     if (gptdm === 'on' && m.chat.endsWith("@s.whatsapp.net")) {
 
   let d = await fetchJson(
@@ -244,7 +252,7 @@ let { key } = await client.sendMessage(from, {text: '𝗣𝗼𝗻𝗴'})
 for (let i = 0; i < lod.length; i++) {
 await client.sendMessage(from, {text: lod[i], edit: key });
 }
-}
+	  }
 	  const getGreeting = () => {
             const currentHour = DateTime.now().setZone('Africa/Nairobi').hour;
 
@@ -264,7 +272,6 @@ await client.sendMessage(from, {text: lod[i], edit: key });
             return DateTime.now().setZone('Africa/Nairobi').toLocaleString(DateTime.TIME_SIMPLE);
         };
 	  const date = new Date() 
-	  
 if (badword === 'on' && isBotAdmin && !isAdmin && body && (new RegExp('\\b' + badwords.join('\\b|\\b') + '\\b')).test(body.toLowerCase())) {
             
      client.groupParticipantsUpdate(from, [sender], 'remove')
@@ -308,7 +315,7 @@ if (antilinkall === 'on' && body.includes('https://') && !Owner && isBotAdmin &&
   
 
     if (cmd && !m.isGroup) {
-      console.log(chalk.black(chalk.bgWhite("[ tesla-md ]")), color(argsLog, "turquoise"), chalk.magenta("From"), chalk.green(pushname), chalk.yellow(`[ ${m.sender.replace("@s.whatsapp.net", "")} ]`));
+      console.log(chalk.black(chalk.bgWhite("[ RAVEN-AI ]")), color(argsLog, "turquoise"), chalk.magenta("From"), chalk.green(pushname), chalk.yellow(`[ ${m.sender.replace("@s.whatsapp.net", "")} ]`));
     } else if (cmd && m.isGroup) {
       console.log(
         chalk.black(chalk.bgWhite("[ LOGS ]")),
@@ -339,13 +346,11 @@ if (antilinkall === 'on' && body.includes('https://') && !Owner && isBotAdmin &&
             if (m.isBaileys) return;
             if (!budy.toLowerCase()) return;
             if (argsLog || (cmd && !m.isGroup)) {
-            
-              console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Tesla", "turquoise"));
-				
+              // client.sendReadReceipt(m.chat, m.sender, [m.key.id])
+              console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Raven", "turquoise"));
             } else if (argsLog || (cmd && m.isGroup)) {
-            
-              console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Tesla", "turquoise"));
-				
+              // client.sendReadReceipt(m.chat, m.sender, [m.key.id])
+              console.log(chalk.black(chalk.bgRed("[ ERROR ]")), color("command", "turquoise"), color(`${prefix}${command}`, "turquoise"), color("Raven", "turquoise"));
             }
           }
         }
