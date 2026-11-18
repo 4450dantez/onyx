@@ -7,6 +7,8 @@ let sessionInitialized = false;
 let databaseInitialized = false;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
+let failedCloses = 0;
+const MAX_FAILED_CLOSES = Number(process.env.MAX_FAILED_CLOSES) || 8;
 
 const crypto = require("crypto");
 const pino = require("pino");
@@ -337,19 +339,21 @@ client.ev.on("group-participants.update", (update) => {
     if (connection === "close") {
       botStatus = "reconnecting";
       let reason = new Boom(lastDisconnect?.error)?.output.statusCode;
-      if (
-        reason === DisconnectReason.badSession ||
-        reason === DisconnectReason.connectionReplaced ||
-        reason === DisconnectReason.loggedOut
-      ) {
+      if (reason === DisconnectReason.connectionReplaced || reason === DisconnectReason.loggedOut) {
         botStatus = "failed";
         console.error(`WhatsApp session needs attention (disconnect reason ${reason}).`);
       } else {
+        failedCloses += 1;
+        if (failedCloses > MAX_FAILED_CLOSES) {
+          console.error(`WhatsApp did not reconnect after ${MAX_FAILED_CLOSES} tries (last reason ${reason ?? "unknown"}). Exiting so the host restarts the bot.`);
+          process.exit(1);
+        }
         scheduleReconnect(reason ?? "unknown");
       }
     } else if (connection === "open") {
       botStatus = "connected";
       reconnectAttempts = 0;
+      failedCloses = 0;
 
       console.log(color(`Congrats, ${botname} has successfully connected to this server`, "green"));
       console.log(color("Text the bot number with menu to check my command list"));
